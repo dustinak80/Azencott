@@ -10,9 +10,11 @@ import matplotlib.pyplot as plt
 import copy
 from sklearn import preprocessing
 from sklearn.metrics import confusion_matrix
+import time
 
 
-
+timea = time.time()
+times = [time.time()]
 ###############################################################################
 #PART ONE: GENERATE DATA BY SIMULATIONS {random numbers = uniform distribution over the interval [-2, +2]}
 ###############################################################################
@@ -20,6 +22,7 @@ from sklearn.metrics import confusion_matrix
 #STEP 1
 
 np.random.seed(seed = 229)
+#np.random.seed(seed = 313)
 #select 16 random numbers Aij with i= 1 2 3 4 and j = 1 2 3 4
 A = np.random.uniform(-2,2,size = (4,4))
 
@@ -48,44 +51,59 @@ for row in range(0,10000):
 
 del row, u
 
+u = pd.Series(U)
+print('\npositive:', len(u[u>0]))
+print('negative:', len(u[u<0]))
+
 #get y into 1 or -1
 y = pd.Series(copy.deepcopy(U))
 y[y>0] = 1; y[y<0] = -1
 
 #turn into data frame
-data = np.insert(X,4,y,axis = 1)
-data = pd.DataFrame(data, columns = [0,1,2,3,'y'])
+data = np.insert(X,4,[y,U],axis = 1)
+data = pd.DataFrame(data, columns = [0,1,2,3,'y','U'])
 
 #keep only 2500 cases in CL(1) and 2500 cases in CL(-1),  
 d = pd.concat([data[data['y']>0].sample(n=2500, axis = 0, random_state = 229),
                     data[data['y']<0].sample(n=2500, axis = 0, random_state = 229)]
                     , axis = 0)
 d = d.reset_index(drop = True)
-d.describe()
-#                 0            1            2            3          y
-#count  5000.000000  5000.000000  5000.000000  5000.000000  5000.0000
-#mean     -0.030798    -0.006511     0.017532    -0.007001     0.0000
-#std       1.151772     1.142018     1.163467     1.158793     1.0001
-#min      -1.999214    -1.999030    -1.999205    -1.999118    -1.0000
-#25%      -1.027578    -0.981700    -0.988848    -1.000714    -1.0000
-#50%      -0.039267    -0.025135     0.017507    -0.053413     0.0000
-#75%       0.965622     0.986252     1.024374     1.006964     1.0000
-#max       1.999050     1.998722     1.999957     1.999582     1.0000
+print('\nGreater than 0 for y, U:', len(d[d['y']>0]),len(d[d['U']>0]), '\n',
+      'Less than 0 for y, U:', len(d[d['y']<0]),len(d[d['U']<0]))
+U_prescale = pd.Series(d['U'])
+#d.describe()
+#                 0            1  ...          y            U
+#count  5000.000000  5000.000000  ...  5000.0000  5000.000000
+#mean     -0.032034    -0.012180  ...     0.0000    -0.641322
+#std       1.148448     1.148988  ...     1.0001     4.693225
+#min      -1.999433    -1.998371  ...    -1.0000   -18.668459
+#25%      -1.030560    -0.992777  ...    -1.0000    -3.403314
+#50%      -0.031247    -0.021481  ...     0.0000    -0.000209
+#75%       0.946375     0.984573  ...     1.0000     2.273674
+#max       1.998916     1.998722  ...     1.0000    13.594242
 
 #Center and Rescale  this data set of size 5000  so that the standardized 
 #data set will have mean = 0 and dispersion =1  
-x_scale = pd.DataFrame(preprocessing.scale(d[[0,1,2,3]]))
-d_scale = pd.concat([x_scale,d['y']], axis = 1)
-d_scale.describe()
-#                  0             1             2             3          y
-#count  5.000000e+03  5.000000e+03  5.000000e+03  5.000000e+03  5000.0000
-#mean   2.229245e-16  3.157474e-17 -2.613021e-16 -1.353584e-16     0.0000
-#std    1.000100e+00  1.000100e+00  1.000100e+00  1.000100e+00     1.0001
-#min   -1.709205e+00 -1.744909e+00 -1.733559e+00 -1.719303e+00    -1.0000
-#25%   -8.655192e-01 -8.540025e-01 -8.650699e-01 -8.576272e-01    -1.0000
-#50%   -7.354152e-03 -1.630917e-02 -2.168156e-05 -4.005603e-02     0.0000
-#75%    8.652058e-01  8.693934e-01  8.654672e-01  8.751056e-01     1.0000
-#max    1.762546e+00  1.756044e+00  1.704065e+00  1.731787e+00     1.0000
+#d_scale = pd.DataFrame(preprocessing.scale(d), columns = [0,1,2,3,'y','U'])
+d_scale = pd.DataFrame(preprocessing.scale(d), columns = [0,1,2,3,'y','U'])
+print('\nGreater than 0 for y, U:', len(d_scale[d_scale['y']>0]),len(d_scale[d_scale['U']>0]), '\n',
+      'Less than 0 for y, U:', len(d_scale[d_scale['y']<0]),len(d_scale[d_scale['U']<0]))
+#do not carry scaled U because the mean isnt centralized, it is a skewed frequency
+d_scale['U'] = U_prescale
+x = d_scale[[0,1,2,3]]
+y = d_scale['y']
+#d_scale['U'] = U_prescale
+odescription = d.describe()
+description = d_scale.describe()
+#                  0             1  ...          y            U
+#count  5.000000e+03  5.000000e+03  ...  5000.0000  5000.000000
+#mean  -1.980624e-16  3.219647e-17  ...     0.0000    -0.641322
+#std    1.000100e+00  1.000100e+00  ...     1.0001     4.693225
+#min   -1.713265e+00 -1.728817e+00  ...    -1.0000   -18.668459
+#25%   -8.695433e-01 -8.535299e-01  ...    -1.0000    -3.403314
+#50%    6.850186e-04 -8.095595e-03  ...     0.0000    -0.000209
+#75%    8.520248e-01  8.675927e-01  ...     1.0000     2.273674
+#max    1.768606e+00  1.750326e+00  ...     1.0000    13.594242
 
 #Then Split each class into a training set and a test set , 
 #using the proportions 80% (2000) and 20% (500)
@@ -95,28 +113,21 @@ test = pd.concat([d_scale[d_scale['y']>0].sample(n=500, axis = 0, random_state =
 train = d_scale.drop(index = test.index.tolist())
 test = test.reset_index(drop = True); train = train.reset_index(drop = True)
 
-test.describe()
-#                 0            1            2            3          y
-#count  1000.000000  1000.000000  1000.000000  1000.000000  1000.0000
-#mean     -0.072690    -0.018303     0.001209     0.044672     0.0000
-#std       1.014888     1.004584     0.996168     0.982818     1.0005
-#min      -1.701889    -1.740440    -1.724199    -1.718540    -1.0000
-#25%      -0.953009    -0.849071    -0.819694    -0.782770    -1.0000
-#50%      -0.133823    -0.068271     0.004469     0.016663     0.0000
-#75%       0.799407     0.846853     0.829280     0.894336     1.0000
-#max       1.758899     1.756044     1.703412     1.727214     1.0000
+#Plot two elements of the data
+#first get highest correlation
+d_scale[[0,1,2,3,'y']].corr()['y']
 
-train.describe()
-#                 0            1            2            3            y
-#count  4000.000000  4000.000000  4000.000000  4000.000000  4000.000000
-#mean     -0.005065    -0.003072     0.003298    -0.009365     0.000000
-#std       0.998458     1.001684     1.000537     1.003748     1.000125
-#min      -1.713265    -1.728817    -1.760184    -1.743854    -1.000000
-#25%      -0.870641    -0.850352    -0.869974    -0.869782    -1.000000
-#50%      -0.002689    -0.018255     0.029563    -0.055263     0.000000
-#75%       0.846080     0.865216     0.867895     0.879854     1.000000
-#max       1.768606     1.750326     1.724248     1.718833     1.000000
+fig, ax = plt.subplots(figsize = (12,8))
+plt.scatter(x = d_scale[[0]][d_scale['y']>0], y = d_scale[[2]][d_scale['y']>0],
+            color = 'blue')
+plt.scatter(x = d_scale[[0]][d_scale['y']<0], y = d_scale[[2]][d_scale['y']<0],
+            color = 'red')
+plt.title('Two dimensional View of Data')
+plt.xlabel('Feature 0')
+plt.ylabel('Feature 2')
 
+times += [time.time()-timea]
+timea = time.time()
 ###############################################################################
 #PART TWO: SVM classification by linear kernel 
 ###############################################################################
@@ -128,24 +139,32 @@ mySVM = SVM()
 #SVM on Training set, linear kernel
 mySVM.set_kernel(kernel = 'linear')
 #run the function
-n_sv, sv, y_predict, score, dist_hp, model, sv_coef = \
-    mySVM.run_svm(train.drop(columns = 'y'), train['y'], C=5, random_state = 9989, train = 'yes')
+n_sv, sv, y_predict, score, conf_int, dist_hp, model = \
+    mySVM.run_svm(train.drop(columns = ['y','U']), train['y'], C=5, random_state = 9989)
 
-#Get density histrograms of accuracy
+#Get density histrograms of accuracy on train
 mySVM.get_hist(dist_hp, train['y'])
 
+#plot polynomial vs. svm
+mySVM.get_scatter(train['U'], dist_hp)
+
 #get confusion matrix for the training set
-train_conf, train_per_conf = mySVM.get_confusions(train['y'], y_predict)
+train_conf, train_per_conf, train_limits, train_confidence = mySVM.get_confusions(train['y'], y_predict, conf_desired = .95)
 
 #SVM on test set
-test_predict, test_score = mySVM.run_svm(test.drop(columns = 'y'), 
-                                                       test['y'], C=5, random_state = 9989, train = 'no', 
-                                                       model = model)
+test_predict, test_score, test_conf_int, test_dist_hp  = \
+    mySVM.run_svm(test.drop(columns = ['y','U']), test['y'], C=5, random_state = 9989,
+                  train = 'no', model = model)
 
-#get confusion matrix on test set
-test_conf, test_per_conf = mySVM.get_confusions(test['y'], test_predict)
+#plot polynomial vs. svm
+mySVM.get_scatter(test['U'], test_dist_hp)
 
-#Compute the errors of estimation
+#get confusion matrix on test set and limits
+test_conf, test_per_conf, test_limits, test_confidence = mySVM.get_confusions(test['y'], test_predict, conf_desired = .95)
+
+#look at these two values to verify what column means what in confusion matrix
+print('\nValue Counts in response:\n', pd.Series(test_predict).value_counts())
+print('\nSum of columns in conf matrix:',test_conf.sum(axis = 0))
 
 ###############################################################################
 #PART THREE: Optimize the parameter cost
@@ -153,36 +172,59 @@ test_conf, test_per_conf = mySVM.get_confusions(test['y'], test_predict)
 
 #Tune the cost
 mySVM = SVM()
-
+    
 #SVM on Training set, linear kernel
 mySVM.set_kernel(kernel = 'linear')
+    
+#run through the different tunes: #1
+C_scores, C_n_sv = mySVM.tune_svm(train.drop(columns = ['y','U']), \
+                                 train['y'], test.drop(columns = ['y','U']), test['y'], \
+                                 C=5, random_state = 9989, tune = 'C', \
+                                 params = [.00001, .001, 1, 10, 30, 50])
 
 #run through the different tunes
-model, C_scores, C_n_sv = mySVM.tune_svm(train.drop(columns = 'y'), \
-                                    train['y'], C=5, random_state = 9989, \
-                                    tune = 'C', params = [1, 25, 75, 150, 300, 600])
+C_scores, C_n_sv = mySVM.tune_svm(train.drop(columns = ['y','U']), \
+                                 train['y'], test.drop(columns = ['y','U']), test['y'], \
+                                 C=5, random_state = 9989, tune = 'C', \
+                                 params = [.001, .01, .1, 1, 1.5, 2])
 
-#print the different scores for each c
-print(max(C_scores), min(C_scores[max(C_scores)]))
-best_c = min(C_scores[max(C_scores)])
-
+    
+##print the different scores for each c
+#print(max(C_scores.values()), C_scores.keys()[max(C_scores)]))
+best_c = .1
+    
 mySVM = SVM()
-
+    
 #SVM on Training set, linear kernel
 mySVM.set_kernel(kernel = 'linear')
 #run the function
-n_sv2, sv2, y2_predict, score2, dist_hp2, model = \
-            mySVM.run_svm(train.drop(columns = 'y'), train['y'], C=best_c, 
-                          random_state = 9989, train = 'yes')
-
+n_sv, sv, y_predict, score, conf_int, dist_hp, model = \
+            mySVM.run_svm(train.drop(columns = ['y','U']), train['y'], C=best_c, 
+                          random_state = 9989)
+    
 #Get density histrograms of accuracy
-mySVM.get_hist(dist_hp2, train['y'])
-
+mySVM.get_hist(dist_hp, train['y'])
+    
 #get confusion matrix for the training set
-train_conf, train_per_conf = mySVM.get_confusions(train['y'], y2_predict)
-
+train_conf, train_per_conf, train_limits, train_confidence = mySVM.get_confusions(train['y'], y_predict, conf_desired = .95)
+ 
+#plot polynomial vs. svm
+mySVM.get_scatter(train['U'], dist_hp)
+   
 #Do test run
+#SVM on test set
+test_predict, test_score, test_conf_int, test_dist_hp  = \
+    mySVM.run_svm(test.drop(columns = ['y','U']), test['y'], C=5, random_state = 9989,
+                  train = 'no', model = model)
 
+#plot polynomial vs. svm
+mySVM.get_scatter(test['U'], test_dist_hp)
+
+#get confusion matrix on test set and limits
+test_conf, test_per_conf, test_limits, test_confidence = mySVM.get_confusions(test['y'], test_predict, conf_desired = .95)
+
+times += [time.time()-timea]
+timea = time.time()
 ###############################################################################
 #PART FOUR:  SVM classification by radial kernel 
 ###############################################################################
@@ -193,24 +235,29 @@ radSVM = SVM()
 radSVM.set_kernel(kernel = 'rbf', gamma = 1)
 
 #run the function
-n_svr, svr, yr_predict, score_r, dist_hp_r, model_r = \
-    radSVM.run_svm(train.drop(columns = 'y'), train['y'], C=best_c, 
+n_svr, svr, yr_predict, score_r, conf_r, dist_hp_r, model_r = \
+    radSVM.run_svm(train.drop(columns = ['y', 'U']), train['y'], C=best_c, 
                   random_state = 9989, train = 'yes')
 
 #Get density histrograms of accuracy
-mySVM.get_hist(dist_hp_r, train['y'])
+radSVM.get_hist(dist_hp_r, train['y'])
 
 #get confusion matrix for the training set
-train_conf_r, train_per_conf_r = mySVM.get_confusions(train['y'], yr_predict)
+train_conf_r, train_per_conf_r, train_limits, train_confidencer = radSVM.get_confusions(train['y'], yr_predict, conf_desired = .95)
+
+#plot polynomial vs. svm
+radSVM.get_scatter(train['U'], dist_hp_r)
 
 #SVM on test set
-test_predict_r, test_score_r = mySVM.run_svm(test.drop(columns = 'y'), 
+test_predict_r, test_score_r, test_conf_r, test_dist_hp_r = radSVM.run_svm(test.drop(columns = ['y', 'U']), 
                             test['y'], C=best_c, random_state = 9989, train = 'no', 
                             model = model_r)
 
 #get confusion matrix on test set
-test_conf_r, test_per_conf_r = mySVM.get_confusions(test['y'], test_predict_r)
+test_conf_r, test_per_conf_r, test_limitsr, test_confidencer = radSVM.get_confusions(test['y'], test_predict_r, conf_desired = .95)
 
+#plot polynomial vs. svm
+radSVM.get_scatter(test['U'], test_dist_hp_r)
 
 ###############################################################################
 #PART FIVE:  Optimize cost and gamma
@@ -222,17 +269,236 @@ tune_radSVM = SVM()
 #SVM on Training set, linear kernel
 tune_radSVM.set_kernel(kernel = 'rbf')
 
-#run through the different tunes
-rtune_model, C_scores, n_sv_gamma = tune_radSVM.tune_svm(train.drop(columns = 'y'), \
-                                    train['y'], C=5, random_state = 9989, \
-                                    tune = 'gamma', params = [.00001, .001, .01, .1, .5, 1])
+#run through the different tunes - first iteration
+gamma_scores, n_sv_gamma = tune_radSVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=best_c, random_state = 9989, tune = 'gamma', 
+                                    params = [.00001, .001, .01, .1, .5, 1])
 
-#print the different scores for each c
-print(max(C_scores), min(C_scores[max(C_scores)]))
+#run through the different tunes - 2nd iteration
+gamma_scores, n_sv_gamma = tune_radSVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y','U']), test['y'], 
+                                    C=best_c, random_state = 9989, tune = 'gamma', 
+                                    params = [.05, .075, .1, .25, .45, .65, .75])
+
+"""
+looks like gamma of .1 is the best for both Test and Train Set \
+Use gamma = 0.45 and iterate through the cost
+"""
+
+tune_radSVM = SVM()
+
+#SVM on Training set, linear kernel
+tune_radSVM.set_kernel(kernel = 'rbf', gamma = .45)
+
+C_scores, n_sv_gamma = tune_radSVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=5, random_state = 9989, tune = 'C', 
+                                    params = [.00001, .01, 10, 35, 70, 100])
+
+C_scores, n_sv_gamma = tune_radSVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=5, random_state = 9989, tune = 'C', 
+                                    params = [.00001, .001, 1, 10, 30, 50])
+
+C_scores, n_sv_gamma = tune_radSVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=5, random_state = 9989, tune = 'C', 
+                                    params = [15, 20, 25, 30, 35, 40, 45])
+
+
+"""
+Looks like cost of 35 was the highest and closest match between test and train \
+We will re-iterate through gamma using a cost of 30, with focus around previous \
+gamma.
+"""
+
+tune_radSVM = SVM()
+
+#SVM on Training set
+tune_radSVM.set_kernel(kernel = 'rbf')
+
+#run through the different tunes with best cost to make sure didnt change
+gamma_scores, n_sv_gamma = tune_radSVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=35, random_state = 9989, tune = 'gamma', 
+                                    params = [.05, .075, .1, .25, .45, .65, .75])
+
+#SVM on Training set, linear kernel
+tune_radSVM.set_kernel(kernel = 'rbf', gamma = .1)
+C_scores, n_sv_gamma = tune_radSVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=5, random_state = 9989, tune = 'C', 
+                                    params = [8, 15, 22, 30, 37, 45, 50])
+
+"""
+Run: gamma = 0.1, C = 35
+"""
+
+#run tuned radial SVM
+C=35; gamma = 0.10
+
+tune_radSVM = SVM()
+
+#SVM on Training set
+tune_radSVM.set_kernel(kernel = 'rbf', gamma = gamma)
+
+n_svrt, svrt, yrt_predict, score_rt, conf_int_rt, dist_hp_rt, model_rt = \
+    tune_radSVM.run_svm(train.drop(columns = ['y', 'U']), train['y'], C=C, 
+                  random_state = 9989)
+
+#Get density histrograms of accuracy
+tune_radSVM.get_hist(dist_hp_rt, train['y'])
+
+#get confusion matrix for the training set
+train_conf_rt, train_per_conf_rt, limits_rt, train_confidence_rt = tune_radSVM.get_confusions(train['y'], yrt_predict)
+
+#plot polynomial vs. svm
+tune_radSVM.get_scatter(train['U'], dist_hp_rt)
+
+#SVM on test set
+test_predict_rt, test_score_rt, test_conf_int_rt, test_dist_hp_rt = tune_radSVM.run_svm(test.drop(columns = ['y', 'U']), 
+                            test['y'], C=C, random_state = 9989, train = 'no', 
+                            model = model_rt)
+
+#get confusion matrix on test set
+test_conf_rt, test_per_conf_rt, test_limits_rt, test_confidence_rt = tune_radSVM.get_confusions(test['y'], test_predict_rt)
+
+#plot polynomial vs. svm
+tune_radSVM.get_scatter(test['U'], test_dist_hp_rt)
+
+times += [time.time()-timea]
+timea = time.time()
+###############################################################################
+#PART SIX:  Run Polynomial with degree = 4, optimize Coeff and Cost
+###############################################################################
+
+"""
+Since we know degree is 4, lets get an initial look with default parameters
+"""
+
+poly_SVM = SVM()
+
+#set polynomial
+poly_SVM.set_kernel('poly', degree = 4)
+
+#run poly SVM
+n_svp, svp, yp_predict, score_p, conf_p, train_dist_hp_p, model_p = \
+    poly_SVM.run_svm(train.drop(columns = ['y', 'U']), train['y'], C = 1,
+                  random_state = 9989, train = 'yes')
+    
+#Get density histrograms of accuracy
+poly_SVM.get_hist(train_dist_hp_p, train['y'])
+
+#get confusion matrix for the training set
+train_conf_p, train_per_conf_p, train_limits_p, train_confidence_p = poly_SVM.get_confusions(train['y'], yp_predict)
+
+#plot polynomial vs. svm
+poly_SVM.get_scatter(train['U'], train_dist_hp_p)
+
+#SVM on test set
+test_predict_p, test_score_p, test_conf_p, test_dist_hp_p = poly_SVM.run_svm(test.drop(columns = ['y', 'U']), 
+                            test['y'], C=1, random_state = 9989, train = 'no', 
+                            model = model_p)
+
+#get confusion matrix on test set
+test_conf_p, test_per_conf_p, test_limits_p, test_confidence_p = poly_SVM.get_confusions(test['y'], test_predict_p)
+
+poly_SVM.get_scatter(test['U'], test_dist_hp_p)
+
+"""
+Tune the parameters Coeff and Cost. Leave Degree = 4
+"""
+tpoly_SVM = SVM()
+
+#set polynomial
+tpoly_SVM.set_kernel('poly', degree = 4)
+
+pt_scores, n_sv_pt = tpoly_SVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=1, random_state = 9989, tune = 'coef0', 
+                                    params = [.001, .1, 10, 30, 60, 100, 200])
+
+tpoly_SVM = SVM()
+
+#set polynomial
+tpoly_SVM.set_kernel('poly', degree = 4)
+
+pt_scores, n_sv_pt = tpoly_SVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=1, random_state = 9989, tune = 'coef0', 
+                                    params = [15, 20, 25, 30, 35, 40, 45])
+
+"""
+Coef of 30 and 50 were equally best on Test. 30 was 100% on Train, 50 was 99.975%.\
+Use Coef 30, change params for Cost now.
+"""
+tpoly_SVM = SVM()
+
+#set polynomial
+tpoly_SVM.set_kernel('poly', degree = 4, coef0 = 30)
+
+pt_scores, n_sv_pt = tpoly_SVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=1, random_state = 9989, tune = 'C', 
+                                    params = [.001, .1, 25, 50, 75, 100, 125])
+
+tpoly_SVM = SVM()
+
+#set polynomial
+tpoly_SVM.set_kernel('poly', degree = 4, coef0 = 30)
+
+pt_scores, n_sv_pt = tpoly_SVM.tune_svm(train.drop(columns = ['y', 'U']), 
+                                    train['y'], test.drop(columns = ['y', 'U']), test['y'], 
+                                    C=1, random_state = 9989, tune = 'C', 
+                                    params = [.1, 1, 5, 10, 15, 20, 25])
+
+"""
+Looks like best cost is 1, though they are so close it is not really different.\
+Use Cost = 1, coef0 = 30, degree = 4 and run_SVM
+"""
+tpoly_SVM = SVM()
+
+#set polynomial
+tpoly_SVM.set_kernel('poly', degree = 4, coef0 = 30)
+
+#run poly SVM
+n_svpt, svpt, ypt_predict, score_pt, train_conf_pt, dist_hp_pt, model_pt = \
+    tpoly_SVM.run_svm(train.drop(columns = ['y', 'U']), train['y'], C = 1,
+                  random_state = 9989, train = 'yes')
+    
+#Get density histrograms of accuracy
+tpoly_SVM.get_hist(dist_hp_pt, train['y'])
+
+#get confusion matrix for the training set
+train_conf_pt, train_per_conf_pt, train_intervals_pt, train_confidence_pt = tpoly_SVM.get_confusions(train['y'], ypt_predict)
+
+#plot polynomial vs. svm
+tpoly_SVM.get_scatter(train['U'], dist_hp_pt)
+
+#SVM on test set
+test_predict_pt, test_score_pt, test_conf_pt, test_dist_hp_pt = tpoly_SVM.run_svm(test.drop(columns = ['y', 'U']), 
+                            test['y'], C=1, random_state = 9989, train = 'no', 
+                            model = model_pt)
+
+#get confusion matrix on test set
+test_conf_pt, test_per_conf_pt, test_intervals_pt, test_confidence_pt = poly_SVM.get_confusions(test['y'], test_predict_pt)
+
+#plot polynomial vs. svm
+tpoly_SVM.get_scatter(test['U'], test_dist_hp_pt)
+
+times += [time.time()-timea]
+timea = time.time()
+###############################################################################
+#Time
+###############################################################################
+
+print(times)
+
+
 
 
 ###############################################################################
-
 #NUMPY WAS SLOWER
 ########################################
 #y = copy.deepcopy(U)
